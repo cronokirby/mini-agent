@@ -24,6 +24,9 @@ executable mini-agent
     build-depends:
         aeson ^>=2.2.3.0,
         base ^>=4.21.0.0,
+        bytestring ^>=0.12.2.0,
+        http-conduit ^>=2.3.9,
+        mtl ^>=2.3.1,
         text ^>=2.1.2,
 
     hs-source-dirs:
@@ -31,6 +34,7 @@ executable mini-agent
 
     default-extensions:
         -- Because we have our own Prelude, in Ourlude.hs.
+        DuplicateRecordFields,
         NoImplicitPrelude,
         NoFieldSelectors,
         OverloadedRecordDot,
