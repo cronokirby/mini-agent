@@ -22,7 +22,9 @@ executable mini-agent
         Ourlude
 
     build-depends:
-        base ^>=4.21.0.0
+        aeson ^>=2.2.3.0,
+        base ^>=4.21.0.0,
+        text ^>=2.1.2,
 
     hs-source-dirs:
         app
@@ -30,8 +32,11 @@ executable mini-agent
     default-extensions:
         -- Because we have our own Prelude, in Ourlude.hs.
         NoImplicitPrelude,
+        NoFieldSelectors,
+        OverloadedRecordDot,
+        OverloadedStrings,
         -- Sensible default, be mindful of this.
-        StrictData
+        StrictData,
 
     default-language:
         GHC2024
