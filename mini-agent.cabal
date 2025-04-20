@@ -19,6 +19,7 @@ executable mini-agent
         Main.hs
 
     other-modules:
+        Control.LLM,
         Control.LLM.Interface,
         Control.Terminal,
         Network.Anthropic,
@@ -47,4 +48,4 @@ executable mini-agent
         StrictData,
 
     default-language:
-        GHC2024
+       GHC2024

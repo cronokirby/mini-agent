@@ -1,22 +1,39 @@
 module Control.LLM.Interface (
   Role (..),
   Message (..),
-  Request (..),
-  Response (..),
-  LLMInterface (..),
+  LLMRequest (..),
+  LLMResponse (..),
+  LLMInterface,
+  anthropicInterface,
 )
 where
 
-import qualified Data.Text as T
+import Network.Anthropic qualified as Anthropic
+import Ourlude
+
+import Data.Text qualified as T
 
 data Role = User | AI
 
 data Message = Message Role T.Text
 
-newtype Request = Request [Message]
+newtype LLMRequest = LLMRequest [Message]
 
-newtype Response = Response [T.Text]
+newtype LLMResponse = LLMResponse [T.Text]
 
-data LLMInterface m = LLMInterface
-  { request :: Request -> m Response
-  }
+type LLMInterface = LLMRequest -> IO LLMResponse
+
+anthropicInterface :: Anthropic.APIKey -> LLMInterface
+anthropicInterface key req =
+  req |> convertRequest |> Anthropic.apiMessages key |> fmap convertResponse
+ where
+  convertRole :: Role -> Anthropic.Role
+  convertRole User = Anthropic.User
+  convertRole AI = Anthropic.Assistant
+  convertMessage :: Message -> Anthropic.Message
+  convertMessage (Message r t) = Anthropic.Message{role = convertRole r, content = t}
+  convertRequest :: LLMRequest -> Anthropic.MessagesRequest
+  convertRequest (LLMRequest msgs) = Anthropic.MessagesRequest Anthropic.Claude_3_5_Haiku 8192 (map convertMessage msgs)
+  convertResponse :: Anthropic.MessagesResponse -> LLMResponse
+  convertResponse resp =
+    resp.content |> map (.text) |> LLMResponse

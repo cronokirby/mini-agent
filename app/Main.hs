@@ -3,31 +3,27 @@ module Main where
 import Ourlude
 
 import Bluefin.Eff (Eff, runEff_, (:>))
-import Bluefin.IO (IOE, effIO)
 import Data.Foldable (for_)
 import System.Environment (getEnv)
 
+import Control.LLM
+import Control.LLM.Interface (anthropicInterface)
 import Control.Terminal
-import Network.Anthropic
+import Network.Anthropic (APIKey, apiKeyFromString)
 
 readAPIKeyFromEnv :: IO APIKey
 readAPIKeyFromEnv = getEnv "ANTHROPIC_API_KEY" |> fmap apiKeyFromString
 
-mkRequest :: [Message] -> MessagesRequest
-mkRequest = MessagesRequest Claude_3_5_Haiku 8192
-
-mainLoop :: (e0 :> es, e1 :> es) => APIKey -> [Message] -> IOE e0 -> Terminal e1 -> Eff es ()
-mainLoop key messages io term = do
+realMain :: (e0 :> es, e1 :> es) => LLM e0 -> Terminal e1 -> Eff es ()
+realMain llm term = do
   input <- userInput term
-  let messages' = Message User input : messages
-      request = mkRequest (reverse messages')
-  MessagesResponse{content} <- effIO io (apiMessages key request)
-  let texts = map (\(TextContent t) -> t) content
-  for_ texts (aiOutput term)
-  let messages'' = map (Message Assistant) (reverse texts) ++ messages'
-  mainLoop key messages'' io term
+  responses <- query llm input
+  for_ responses (aiOutput term)
+  realMain llm term
 
 main :: IO ()
 main = do
   key <- readAPIKeyFromEnv
-  runEff_ (\io -> runTerminalIO io (mainLoop key [] io))
+  runEff_ $ \io ->
+    runLLMIO (anthropicInterface key) io $ \llm ->
+      runTerminalIO io $ \term -> realMain llm term
