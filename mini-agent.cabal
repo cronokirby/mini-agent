@@ -19,6 +19,7 @@ executable mini-agent
         Main.hs
 
     other-modules:
+        Control.LLM.Interface,
         Control.Terminal,
         Network.Anthropic,
         Ourlude
