@@ -25,6 +25,7 @@ executable mini-agent
     build-depends:
         aeson ^>=2.2.3.0,
         base ^>=4.21.0.0,
+        bluefin ^>=0.0.15.0,
         bytestring ^>=0.12.2.0,
         http-conduit ^>=2.3.9,
         mtl ^>=2.3.1,
