@@ -19,6 +19,7 @@ executable mini-agent
         Main.hs
 
     other-modules:
+        Bluefin.Free,
         Control.LLM,
         Control.LLM.Interface,
         Control.Terminal,

@@ -10,44 +10,37 @@ where
 
 import Ourlude
 
-import Bluefin.Compound (Handle (..), makeOp, useImplIn, useImplUnder)
+import Bluefin.Compound (Handle)
 import Bluefin.Eff (Eff, (:&), (:>))
+import Bluefin.Free (Free, free, runFree)
 import Bluefin.IO (IOE, effIO)
+import Data.Coerce (coerce)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import System.IO (hFlush, stdout)
 
-data Terminal e = Terminal
-  { userInputImpl :: forall e'. Eff (e' :& e) T.Text
-  , aiOutputImpl :: forall e'. T.Text -> Eff (e' :& e) ()
-  }
+data TerminalF a where
+  UserInput :: TerminalF T.Text
+  AIOutput :: T.Text -> TerminalF ()
 
-instance Handle Terminal where
-  mapHandle t =
-    Terminal
-      { userInputImpl = useImplUnder (userInputImpl t)
-      , aiOutputImpl = \out -> useImplUnder (aiOutputImpl t out)
-      }
+newtype Terminal e = Terminal (Free TerminalF e)
+  deriving newtype (Handle)
 
 userInput :: (e :> es) => Terminal e -> Eff es T.Text
-userInput e = userInputImpl (mapHandle e) |> makeOp
+userInput e = free (coerce e) UserInput
 
 aiOutput :: (e :> es) => Terminal e -> T.Text -> Eff es ()
-aiOutput e = aiOutputImpl (mapHandle e) >>> makeOp
+aiOutput e = free (coerce e) <<< AIOutput
+
+runTerminal :: (forall r. TerminalF r -> Eff es r) -> (forall e'. Terminal e' -> Eff (e' :& es) a) -> Eff es a
+runTerminal h k = runFree h (coerce k)
 
 runTerminalIO :: (e :> es) => IOE e -> (forall e'. Terminal e' -> Eff (e' :& es) a) -> Eff es a
-runTerminalIO io k =
-  useImplIn
-    k
-    ( Terminal
-        { userInputImpl =
-            effIO io <| do
-              T.putStr "\x1b[94mMe: \x1b[0m"
-              hFlush stdout
-              T.getLine
-        , aiOutputImpl = \t ->
-            effIO io <| do
-              T.putStr "\x1b[92mAI: \x1b[0m"
-              T.putStrLn t
-        }
-    )
+runTerminalIO io = runTerminal $ \case
+  UserInput -> effIO io $ do
+    T.putStr "\x1b[94mMe: \x1b[0m"
+    hFlush stdout
+    T.getLine
+  AIOutput t -> effIO io $ do
+    T.putStr "\x1b[92mAI: \x1b[0m"
+    T.putStrLn t
