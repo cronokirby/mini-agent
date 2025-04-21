@@ -1,6 +1,5 @@
 module Network.Anthropic (
-  APIKey (..),
-  apiKeyFromString,
+  APIKey,
   Model (..),
   apiMessages,
   MessagesRequest (..),
@@ -18,20 +17,10 @@ import Data.Aeson (FromJSON (..), ToJSON (..))
 import qualified Data.Aeson as Aeson
 import qualified Data.ByteString as B
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
 import GHC.Generics (Generic)
 import Network.HTTP.Simple as HTTP
 
-newtype APIKey = APIKey T.Text
-
-instance Show APIKey where
-  show _ = "APIKey \"<redacted>\""
-
-apiKeyFromString :: String -> APIKey
-apiKeyFromString = T.pack >>> APIKey
-
-apiKeyToBS :: APIKey -> B.ByteString
-apiKeyToBS (APIKey k) = T.encodeUtf8 k
+type APIKey = B.ByteString
 
 apiCall :: (ToJSON i, FromJSON o, MonadIO m) => APIKey -> T.Text -> i -> m o
 apiCall key path apiCallBody = do
@@ -45,7 +34,7 @@ apiCall key path apiCallBody = do
     liftIO (HTTP.parseRequest requestString) |> fmap (augment key' body)
   augment key' body =
     HTTP.setRequestHeader "anthropic-version" ["2023-06-01"]
-      >>> HTTP.setRequestHeader "x-api-key" [apiKeyToBS key']
+      >>> HTTP.setRequestHeader "x-api-key" [key']
       >>> HTTP.setRequestBodyJSON body
 
 data Role = User | Assistant

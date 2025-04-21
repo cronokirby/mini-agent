@@ -22,6 +22,7 @@ executable mini-agent
         Bluefin.Free,
         Control.LLM,
         Control.LLM.Interface,
+        Control.LLM.Backends,
         Control.Terminal,
         Network.Anthropic,
         Ourlude

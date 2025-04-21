@@ -1,53 +1,40 @@
-{-# LANGUAGE FieldSelectors #-}
-
-module Control.LLM (LLM, query, runLLMIO) where
+module Control.LLM (LLM, query, runLLM) where
 
 import Ourlude
 
-import Bluefin.Compound (Handle (..), makeOp, useImplIn, useImplUnder)
+import Bluefin.Compound (Handle (..), useImplIn)
 import Bluefin.Eff (Eff, (:&), (:>))
-import Bluefin.IO (IOE, effIO)
+import Bluefin.Free (Free, free, runFree)
 import Bluefin.State (State, evalState, get, modify)
 import qualified Data.Text as T
 
-import Control.LLM.Interface
+import Control.LLM.Interface (LLMInterface (..), Message (..), Role (..))
 
 data LLM e = LLM
-  { requestImpl :: forall e'. LLMRequest -> Eff (e' :& e) LLMResponse
+  { llmE :: Free LLMInterface e
   , stateE :: State [Message] e
   }
 
 instance Handle LLM where
-  mapHandle l =
+  mapHandle (LLM llmE stateE) =
     LLM
-      { requestImpl = \r -> useImplUnder (requestImpl l r)
-      , stateE = mapHandle (stateE l)
+      { llmE = mapHandle llmE
+      , stateE = mapHandle stateE
       }
 
-request :: (e :> es) => LLM e -> LLMRequest -> Eff es LLMResponse
-request e = requestImpl (mapHandle e) >>> makeOp
-
-getState :: (e :> es) => LLM e -> Eff es [Message]
-getState e = get (stateE e)
-
-modifyState :: (e :> es) => LLM e -> ([Message] -> [Message]) -> Eff es ()
-modifyState e = modify (stateE e)
-
 query :: (e :> es) => LLM e -> T.Text -> Eff es [T.Text]
-query llm msg = do
-  modifyState llm ((Message User msg) :)
-  messages <- fmap reverse (getState llm)
-  LLMResponse out <- request llm (LLMRequest messages)
-  modifyState llm ((out |> map (Message AI) |> reverse) ++)
+query (LLM llmE stateE) msg = do
+  modify stateE ((Message User msg) :)
+  messages <- fmap reverse (get stateE)
+  out <- free llmE (Query messages)
+  modify stateE ((out |> map (Message AI) |> reverse) ++)
   pure out
 
-runLLMIO :: (e :> es) => LLMInterface -> IOE e -> (forall e'. LLM e' -> Eff (e' :& es) a) -> Eff es a
-runLLMIO interface io k =
-  evalState [] $ \st ->
-    useImplIn
-      k
-      ( LLM
-          { requestImpl = effIO io <<< interface
-          , stateE = mapHandle st
-          }
-      )
+runLLM ::
+  (forall r. LLMInterface r -> Eff es r) ->
+  (forall e'. LLM e' -> Eff (e' :& es) a) ->
+  Eff es a
+runLLM handler k =
+  evalState [] $ \stateE ->
+    runFree handler $ \llmE ->
+      useImplIn k (LLM (mapHandle llmE) (mapHandle stateE))
