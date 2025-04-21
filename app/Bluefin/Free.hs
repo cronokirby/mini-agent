@@ -20,6 +20,9 @@ instance Handle (Free f) where
 free :: (e :> es) => Free f e -> f a -> Eff es a
 free e x = useImpl (makeOp (runFreeImpl e x))
 
-runFree :: (forall r. f r -> Eff es r) -> (forall e'. Free f e' -> Eff (e' :& es) a) -> Eff es a
+runFree ::
+  (forall r. f r -> Eff es r) ->
+  (forall e'. Free f e' -> Eff (e' :& es) a) ->
+  Eff es a
 runFree handler k =
   useImplIn k (Free (useImpl <<< handler))

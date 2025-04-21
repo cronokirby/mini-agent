@@ -36,11 +36,13 @@ runTerminal :: (forall r. TerminalF r -> Eff es r) -> (forall e'. Terminal e' ->
 runTerminal h k = runFree h (coerce k)
 
 runTerminalIO :: (e :> es) => IOE e -> (forall e'. Terminal e' -> Eff (e' :& es) a) -> Eff es a
-runTerminalIO io = runTerminal $ \case
-  UserInput -> effIO io $ do
+runTerminalIO io = runTerminal (handler >>> effIO io)
+ where
+  handler :: forall r. TerminalF r -> IO r
+  handler UserInput = do
     T.putStr "\x1b[94mMe: \x1b[0m"
     hFlush stdout
     T.getLine
-  AIOutput t -> effIO io $ do
+  handler (AIOutput t) = do
     T.putStr "\x1b[92mAI: \x1b[0m"
     T.putStrLn t
