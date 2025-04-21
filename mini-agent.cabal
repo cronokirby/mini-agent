@@ -40,6 +40,7 @@ executable mini-agent
         app
 
     default-extensions:
+        BlockArguments,
         -- Because we have our own Prelude, in Ourlude.hs.
         DuplicateRecordFields,
         NoImplicitPrelude,

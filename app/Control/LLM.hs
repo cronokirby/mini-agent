@@ -35,6 +35,6 @@ runLLM ::
   (forall e'. LLM e' -> Eff (e' :& es) a) ->
   Eff es a
 runLLM handler k =
-  evalState [] $ \stateE ->
-    runFree handler $ \llmE ->
+  evalState [] \stateE ->
+    runFree handler \llmE ->
       useImplIn k (LLM (mapHandle llmE) (mapHandle stateE))

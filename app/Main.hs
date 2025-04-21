@@ -46,7 +46,7 @@ llmHandler = anthropic
 main :: IO ()
 main = do
   key <- readAPIKeyFromEnv
-  runEff_ $ \io ->
-    runTerminal (terminalHandler >>> effIO io) $ \term ->
-      runLLM (llmHandler key >>> effIO io) $ \llm ->
+  runEff_ \io ->
+    runTerminal (terminalHandler >>> effIO io) \term ->
+      runLLM (llmHandler key >>> effIO io) \llm ->
         realMain llm term
